@@ -38,7 +38,7 @@ export default async function Home() {
     },
     {
       q: 'Is isaidown.live free to use?',
-      a: 'Yes, completely free. We built this as a community resource. No ads, no paywalls, no tracking. Monitored via Cloudflare Workers on the $0 free tier.',
+      a: 'Yes, completely free. No signup required. Monitored via Cloudflare Workers, updated every 2 minutes.',
     },
   ];
 
@@ -57,7 +57,7 @@ export default async function Home() {
         </header>
 
         {/* Hero */}
-        <section className="flex flex-col items-center px-[64px] pt-[80px] pb-[64px] gap-6">
+        <section className="flex flex-col items-center px-[64px] pt-[64px] pb-[40px] gap-5">
           {allUp ? (
             <div className="inline-flex items-center gap-2 px-5 py-2 border border-success bg-success-bg">
               <span className="w-2 h-2 bg-success" />
@@ -86,8 +86,8 @@ export default async function Home() {
         {anyDown && <DownBanner downServices={downServices} />}
 
         {/* Status Grid */}
-        <section className="px-[64px] py-[48px]">
-          <div className="flex items-center justify-between mb-8">
+        <section className="px-[64px] pb-[48px]">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-h2">Live Status</h2>
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface">
               <span className="w-1.5 h-1.5 bg-success rounded-none" />
