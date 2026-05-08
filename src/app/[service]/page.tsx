@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ service: 
     title,
     description,
     openGraph: { title, description },
-    alternates: { canonical: `https://isaidown.live/${service}` },
+    alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live'}/${service}` },
   };
 }
 
@@ -59,7 +59,7 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
         "name": `Why is ${def.label} not working?`,
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": `${def.label} may be experiencing an outage, scheduled maintenance, or your local connection may be the issue. Check isaidown.live for real-time status updates.`
+          "text": `${def.label} may be experiencing an outage, scheduled maintenance, or your local connection may be the issue. Check ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live'} for real-time status updates.`
         }
       },
       {
@@ -67,7 +67,7 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
         "name": `What to do if ${def.label} is down?`,
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": `If ${def.label} is down, try refreshing the page, clearing your cache, or using an alternative AI service. Check isaidown.live for working alternatives.`
+          "text": `If ${def.label} is down, try refreshing the page, clearing your cache, or using an alternative AI service. Check ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live'} for working alternatives.`
         }
       }
     ]

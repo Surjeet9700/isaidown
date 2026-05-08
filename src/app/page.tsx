@@ -1,11 +1,12 @@
 export const revalidate = 60;
 
-import { getAllStatus, isDown } from '@/lib/status';
+import { getAllStatus, getCheckedAt, isDown } from '@/lib/status';
 import StatusGrid from '@/components/StatusGrid';
 import DownBanner from '@/components/DownBanner';
 
 export default async function Home() {
   const statuses = await getAllStatus();
+  const checkedAt = await getCheckedAt();
   const downServices = statuses.filter(isDown);
   const anyDown = downServices.length > 0;
   const allUp = !anyDown && statuses.length > 0;
@@ -73,11 +74,11 @@ export default async function Home() {
             Is AI Down?
           </h1>
           <p className="text-lg text-text-secondary text-center max-w-xl">
-            Real-time status for 8 major AI tools. Updated every 60 seconds.
+            Real-time status for {statuses.length > 0 ? statuses.length : '13'} major AI tools. Updated every 60 seconds.
           </p>
           <p className="text-xs text-text-muted font-mono">
-            {statuses[0]?.timestamp
-              ? `Last checked ${new Date(statuses[0].timestamp).toUTCString()}`
+            {checkedAt
+              ? `Last checked ${new Date(checkedAt).toUTCString()}`
               : 'Awaiting data...'}
           </p>
         </section>

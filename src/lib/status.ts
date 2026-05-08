@@ -8,17 +8,23 @@ export type ServiceStatus = {
   source: string;
   timestamp: string;
   note?: string;
+  report_count?: number;
 };
 
 export const SERVICE_DEFINITIONS = [
-  { name: 'character_ai', label: 'Character AI', domain: 'character.ai', keyword: 'is character ai down', url: 'https://character.ai' },
-  { name: 'janitor_ai', label: 'Janitor AI', domain: 'janitorai.com', keyword: 'is janitor ai down', url: 'https://janitorai.com' },
   { name: 'chatgpt', label: 'ChatGPT', domain: 'chat.openai.com', keyword: 'is chatgpt down right now', url: 'https://chat.openai.com' },
   { name: 'claude', label: 'Claude', domain: 'claude.ai', keyword: 'is claude down', url: 'https://claude.ai' },
   { name: 'gemini', label: 'Gemini', domain: 'gemini.google.com', keyword: 'is gemini down', url: 'https://gemini.google.com' },
+  { name: 'character_ai', label: 'Character AI', domain: 'character.ai', keyword: 'is character ai down', url: 'https://character.ai' },
   { name: 'perplexity', label: 'Perplexity', domain: 'perplexity.ai', keyword: 'is perplexity down', url: 'https://perplexity.ai' },
-  { name: 'cursor', label: 'Cursor', domain: 'cursor.sh', keyword: 'is cursor down', url: 'https://cursor.sh' },
+  { name: 'janitor_ai', label: 'Janitor AI', domain: 'janitorai.com', keyword: 'is janitor ai down', url: 'https://janitorai.com' },
   { name: 'midjourney', label: 'Midjourney', domain: 'midjourney.com', keyword: 'is midjourney down', url: 'https://midjourney.com' },
+  { name: 'cursor', label: 'Cursor', domain: 'cursor.sh', keyword: 'is cursor down', url: 'https://cursor.sh' },
+  { name: 'grok', label: 'Grok', domain: 'grok.com', keyword: 'is grok down', url: 'https://grok.com' },
+  { name: 'deepseek', label: 'DeepSeek', domain: 'chat.deepseek.com', keyword: 'is deepseek down', url: 'https://chat.deepseek.com' },
+  { name: 'canva', label: 'Canva AI', domain: 'canva.com', keyword: 'is canva down', url: 'https://www.canva.com' },
+  { name: 'copilot', label: 'Copilot', domain: 'copilot.microsoft.com', keyword: 'is copilot down', url: 'https://copilot.microsoft.com' },
+  { name: 'meta_ai', label: 'Meta AI', domain: 'meta.ai', keyword: 'is meta ai down', url: 'https://www.meta.ai' },
 ];
 
 const WORKER_URL = process.env.WORKER_URL;
@@ -30,9 +36,24 @@ export async function getAllStatus(): Promise<ServiceStatus[]> {
       next: { revalidate: 60 },
     });
     if (!res.ok) return [];
-    return res.json();
+    const data = await res.json();
+    return data.services ?? [];
   } catch {
     return [];
+  }
+}
+
+export async function getCheckedAt(): Promise<string | null> {
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/status/all`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.checked_at ?? null;
+  } catch {
+    return null;
   }
 }
 

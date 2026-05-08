@@ -36,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: 'Live status monitoring for 8 major AI tools. Is ChatGPT down? Is Character AI not working? Check here.',
       siteName: 'IsAIDown.live',
     },
-    alternates: { canonical: 'https://isaidown.live' },
+    alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live'}` },
     robots: { index: true, follow: true },
   };
 }

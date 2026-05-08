@@ -1,10 +1,11 @@
 export default function sitemap() {
-  const services = ['character_ai', 'janitor_ai', 'chatgpt', 'claude', 'gemini', 'perplexity', 'cursor', 'midjourney'];
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live';
+  const services = ['chatgpt', 'claude', 'gemini', 'character_ai', 'perplexity', 'janitor_ai', 'midjourney', 'cursor', 'grok', 'deepseek', 'canva', 'copilot', 'meta_ai'];
 
   return [
-    { url: 'https://isaidown.live', changeFrequency: 'always', priority: 1 },
+    { url: siteUrl, changeFrequency: 'always' as const, priority: 1 },
     ...services.map((s) => ({
-      url: `https://isaidown.live/${s}`,
+      url: `${siteUrl}/${s}`,
       changeFrequency: 'always' as const,
       priority: 0.9,
     })),
