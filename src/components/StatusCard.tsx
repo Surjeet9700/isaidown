@@ -80,8 +80,8 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
     setReportState('loading');
     try {
       const workerUrl = (window as unknown as { __WORKER_URL?: string }).__WORKER_URL
-        ?? process.env.NEXT_PUBLIC_WORKER_URL
-        ?? 'https://ai-status-worker.surjeethkumar4.workers.dev';
+        ?? process.env.NEXT_PUBLIC_WORKER_URL;
+      if (!workerUrl) return;
       const res = await fetch(`${workerUrl}/report/${s.name}`, { method: 'POST' });
       if (res.status === 429) {
         setReportState('blocked');
@@ -121,8 +121,8 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
     setEmailState('loading');
     try {
       const workerUrl = (window as unknown as { __WORKER_URL?: string }).__WORKER_URL
-        ?? process.env.NEXT_PUBLIC_WORKER_URL
-        ?? 'https://ai-status-worker.surjeethkumar4.workers.dev';
+        ?? process.env.NEXT_PUBLIC_WORKER_URL;
+      if (!workerUrl) return;
       const res = await fetch(`${workerUrl}/subscribe/${s.name}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,7 +191,7 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
           )}
         </div>
         <a
-          href={`${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live'}/${s.name}`}
+          href={`${process.env.NEXT_PUBLIC_SITE_URL}/${s.name}`}
           className="text-xs text-text-muted font-mono underline underline-offset-2 hover:text-text-secondary transition-colors"
         >
           Details →
