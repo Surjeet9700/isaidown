@@ -1,3 +1,35 @@
+export type ApiStatus = {
+  ok: boolean;
+  latency_ms: number;
+  http_code: number;
+  error_type: string;
+};
+
+export type ErrorType =
+  | 'ok'
+  | 'http_5xx'
+  | 'http_4xx'
+  | 'dns_failure'
+  | 'timeout'
+  | 'tls_error'
+  | 'connection_refused'
+  | 'connection_reset'
+  | 'access_denied'
+  | 'unknown_error';
+
+export type OfficialStatus = {
+  has_incidents: boolean;
+  active_count: number;
+  updated_at: string | null;
+  latest_incident: { name: string; status: string } | null;
+};
+
+export type HistoryEntry = {
+  t: string;
+  ms: number;
+  s: number;
+};
+
 export type ServiceStatus = {
   name: string;
   label: string;
@@ -9,6 +41,15 @@ export type ServiceStatus = {
   timestamp: string;
   note?: string;
   report_count?: number;
+  report_countries?: Record<string, number>;
+  error_type?: ErrorType;
+  error?: string;
+  api_status?: ApiStatus;
+  error_page_detected?: boolean;
+  error_page_sig?: string;
+  downSince?: string | null;
+  official_status?: OfficialStatus;
+  history?: HistoryEntry[];
 };
 
 export const SERVICE_DEFINITIONS = [
@@ -40,6 +81,20 @@ export async function getAllStatus(): Promise<ServiceStatus[]> {
     return data.services ?? [];
   } catch {
     return [];
+  }
+}
+
+export async function getAllStatusWithMeta(): Promise<{ services: ServiceStatus[]; checkedAt: string | null }> {
+  if (!WORKER_URL) return { services: [], checkedAt: null };
+  try {
+    const res = await fetch(`${WORKER_URL}/status/all`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return { services: [], checkedAt: null };
+    const data = await res.json();
+    return { services: data.services ?? [], checkedAt: data.checked_at ?? null };
+  } catch {
+    return { services: [], checkedAt: null };
   }
 }
 

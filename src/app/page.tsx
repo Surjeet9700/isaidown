@@ -1,12 +1,13 @@
 export const revalidate = 60;
 
-import { getAllStatus, getCheckedAt, isDown } from '@/lib/status';
+import { getAllStatusWithMeta, isDown } from '@/lib/status';
 import StatusGrid from '@/components/StatusGrid';
 import DownBanner from '@/components/DownBanner';
+import { DotmCircular14 } from '@/components/ui/dotm-circular-14';
+import LocalTime from '@/components/LocalTime';
 
 export default async function Home() {
-  const statuses = await getAllStatus();
-  const checkedAt = await getCheckedAt();
+  const { services: statuses, checkedAt } = await getAllStatusWithMeta();
   const downServices = statuses.filter(isDown);
   const anyDown = downServices.length > 0;
   const allUp = !anyDown && statuses.length > 0;
@@ -78,7 +79,7 @@ export default async function Home() {
           </p>
           <p className="text-xs text-text-muted font-mono">
             {checkedAt
-              ? `Last checked ${new Date(checkedAt).toUTCString()}`
+              ? <>Last checked <LocalTime iso={checkedAt} /></>
               : 'Awaiting data...'}
           </p>
         </section>
@@ -95,7 +96,18 @@ export default async function Home() {
               <span className="text-xs font-semibold text-success">Live</span>
             </div>
           </div>
-          <StatusGrid statuses={statuses} />
+          {statuses.length > 0 ? (
+            <StatusGrid statuses={statuses} />
+          ) : !process.env.WORKER_URL ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="flex flex-col items-center gap-3">
+                <DotmCircular14 size={40} dotSize={5} speed={1.75} animated />
+                <p className="text-xs font-mono text-text-muted">Connecting to monitors...</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs font-mono text-text-muted text-center py-20">No status data available yet. Check back shortly.</p>
+          )}
         </section>
 
         {/* FAQ */}

@@ -8,6 +8,19 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  revalidatePath('/');
-  return Response.json({ revalidated: true, ts: Date.now() });
+  revalidatePath('/', 'layout');
+
+  let service: string | null = null;
+  try {
+    const body = await req.json();
+    service = body.service ?? null;
+  } catch {
+    // no body, just revalidate home
+  }
+
+  if (service) {
+    revalidatePath(`/${service}`, 'page');
+  }
+
+  return Response.json({ revalidated: true, path: service ? `/${service}` : '/', ts: Date.now() });
 }
