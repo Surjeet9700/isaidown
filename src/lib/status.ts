@@ -42,6 +42,7 @@ export type ServiceStatus = {
   note?: string;
   report_count?: number;
   report_countries?: Record<string, number>;
+  report_types?: Record<string, number>;
   error_type?: ErrorType;
   error?: string;
   api_status?: ApiStatus;

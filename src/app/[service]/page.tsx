@@ -7,6 +7,7 @@ import LocalTime from '@/components/LocalTime';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Wifi, WifiOff, Globe, Clock, Activity, BarChart3, Users, ShieldAlert, Server, ExternalLink, AlertTriangle } from 'lucide-react';
 
 export async function generateStaticParams() {
@@ -26,14 +27,27 @@ export async function generateMetadata({ params }: { params: Promise<{ service: 
     : `🟢 ${def.label} is UP — Is ${def.label} Down? (Live Status)`;
 
   const description = status?.status === 'down'
-    ? `${def.label} is currently down. Check live status, find alternatives, and get notified when it's back.`
-    : `${def.label} is online. Live status monitoring. Check if it's down for everyone or just you.`;
+    ? `${def.label} is DOWN right now. Live outage detection with ${status.latency_ms}ms response time. Check if ${def.label} is down for everyone or just you. Find working alternatives.`
+    : `${def.label} is UP and responding in ${status?.latency_ms ?? '—'}ms. Real-time status monitoring. Check if ${def.label} is down for everyone or just you. Updated every 2 minutes.`;
 
   return {
     title,
     description,
-    openGraph: { title, description },
-    alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live'}/${service}` },
+    openGraph: {
+      title,
+      description,
+      siteName: 'IsAIDown.live',
+      images: [
+        {
+          url: '/brand_logo.png',
+          width: 512,
+          height: 512,
+          alt: 'IsAIDown.live Logo',
+        },
+      ],
+    },
+    alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app'}/${service}` },
+    robots: { index: true, follow: true },
   };
 }
 
@@ -145,10 +159,19 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
         "name": `What to do if ${def.label} is down?`,
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": `If ${def.label} is down, try refreshing, clearing your cache, or using an alternative. Check ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown.live'} for working alternatives.`
+          "text": `If ${def.label} is down, try refreshing, clearing your cache, or using an alternative. Check ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app'} for working alternatives.`
         }
       }
     ]
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app' },
+      { "@type": "ListItem", "position": 2, "name": `Is ${def.label} Down?`, "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app'}/${service}` },
+    ],
   };
 
   return (
@@ -156,10 +179,10 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
       <div className="max-w-[1280px] mx-auto">
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(faqSchema)}} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(breadcrumbSchema)}} />
 
         <header className="flex items-center justify-between h-16 px-8">
           <Link href="/" className="text-lg font-bold text-text-primary flex items-center gap-2">
-            <Activity className="w-5 h-5 text-success" />
             IsAIDown.live
           </Link>
         </header>
@@ -274,6 +297,18 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
                   </div>
                 ) : (
                   <p className="text-[11px] font-mono text-text-muted">No reports yet</p>
+                )}
+
+                {status?.report_types && Object.keys(status.report_types).length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-border mt-2">
+                    <p className="text-[10px] font-mono text-text-muted mb-1">What people reported:</p>
+                    {Object.entries(status.report_types).sort(([, a], [, b]) => b - a).map(([key, count]) => (
+                      <div key={key} className="flex justify-between text-[10px] font-mono">
+                        <span className="text-text-muted">{key === 'website' ? 'Website down' : key === 'login' ? 'Login issues' : key === 'api' ? 'API not working' : key === 'slow' ? 'Very slow' : 'Other'}</span>
+                        <span className="text-text-secondary">{count}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

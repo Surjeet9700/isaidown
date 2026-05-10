@@ -362,6 +362,37 @@ function badgeSvg(status, label) {
 </svg>`;
 }
 
+// ─── Report aggregation ────────────────────────────────────────────
+async function getReportTotals(env, service) {
+  const now = new Date();
+  let totalCount = 0;
+  const allCountries = {};
+  const allTypes = {};
+
+  for (let d = 0; d < 2; d++) {
+    const date = new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+    const dayKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+
+    const raw = await env.STATUS_KV.get(`reports_day:${service}:${dayKey}`);
+    if (raw) {
+      const data = JSON.parse(raw);
+      totalCount += data.count ?? 0;
+      if (data.countries) {
+        for (const [code, count] of Object.entries(data.countries)) {
+          allCountries[code] = (allCountries[code] ?? 0) + count;
+        }
+      }
+      if (data.types) {
+        for (const [type, count] of Object.entries(data.types)) {
+          allTypes[type] = (allTypes[type] ?? 0) + count;
+        }
+      }
+    }
+  }
+
+  return { totalCount, countries: allCountries, types: allTypes };
+}
+
 const worker = {
   async scheduled(controller, env, ctx) {
     let downCount = 0;
@@ -421,23 +452,32 @@ const worker = {
 
       await env.STATUS_KV.put(lockKey, '1', { expirationTtl: 1800 });
 
-      const countKey = `reports:${service}`;
-      const raw = await env.STATUS_KV.get(countKey);
-      const current = raw ? parseInt(raw, 10) : 0;
-      await env.STATUS_KV.put(countKey, String(current + 1));
+      const now = new Date();
+      const todayKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+      const dayKey = `reports_day:${service}:${todayKey}`;
+      const dayRaw = await env.STATUS_KV.get(dayKey);
+      const dayData = dayRaw ? JSON.parse(dayRaw) : { count: 0, countries: {}, types: {} };
 
-      const metaRaw = await env.STATUS_KV.get('meta:reports');
-      const meta = metaRaw ? JSON.parse(metaRaw) : {};
-      meta[service] = current + 1;
-      await env.STATUS_KV.put('meta:reports', JSON.stringify(meta));
+      let problemType = 'other';
+      try {
+        const body = await request.json();
+        if (body.type && ['website', 'login', 'api', 'slow', 'other'].includes(body.type)) {
+          problemType = body.type;
+        }
+      } catch { /* no body, default to other */ }
 
-      const countryKey = `reports_country:${service}`;
-      const countryRaw = await env.STATUS_KV.get(countryKey);
-      const countries = countryRaw ? JSON.parse(countryRaw) : {};
-      countries[country] = (countries[country] ?? 0) + 1;
-      await env.STATUS_KV.put(countryKey, JSON.stringify(countries));
+      dayData.count += 1;
+      dayData.countries[country] = (dayData.countries[country] ?? 0) + 1;
+      dayData.types[problemType] = (dayData.types[problemType] ?? 0) + 1;
+      await env.STATUS_KV.put(dayKey, JSON.stringify(dayData), { expirationTtl: 172800 });
 
-      return new Response(JSON.stringify({ ok: true, count: current + 1 }), { headers: corsHeaders });
+      const totalCount = dayData.count;
+
+      // Also compute today's total quickly from the dayData
+      // We'll pass the count back in the response
+
+
+      return new Response(JSON.stringify({ ok: true, count: totalCount }), { headers: corsHeaders });
     }
 
     const subscribeMatch = url.pathname.match(/^\/subscribe\/(.+)$/);
@@ -508,25 +548,23 @@ const worker = {
     }
 
     if (url.pathname === '/status/all') {
-      const metaRaw = await env.STATUS_KV.get('meta:reports');
-      const reportsMeta = metaRaw ? JSON.parse(metaRaw) : {};
-
       const all = await Promise.all(
         TARGETS.map(async (t) => {
           const raw = await env.STATUS_KV.get(`status:${t.name}`);
           const base = raw ? JSON.parse(raw) : { name: t.name, label: t.label, status: 'unknown' };
-          const countryRaw = await env.STATUS_KV.get(`reports_country:${t.name}`);
           const historyRaw = await env.STATUS_KV.get(`history:${t.name}`);
           const history = historyRaw ? JSON.parse(historyRaw) : [];
           const freshestHistory = history.length > 0 ? history[history.length - 1] : null;
           const effectiveTimestamp = freshestHistory
             ? freshestHistory.t
             : base.timestamp ?? null;
+          const { totalCount: reportCount, countries, types } = await getReportTotals(env, t.name);
           return {
             ...base,
             timestamp: effectiveTimestamp,
-            report_count: reportsMeta[t.name] ?? 0,
-            report_countries: countryRaw ? JSON.parse(countryRaw) : {},
+            report_count: reportCount,
+            report_countries: countries,
+            report_types: types,
             history,
           };
         })

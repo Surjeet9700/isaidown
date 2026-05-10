@@ -5,6 +5,9 @@ import StatusGrid from '@/components/StatusGrid';
 import DownBanner from '@/components/DownBanner';
 import { DotmCircular14 } from '@/components/ui/dotm-circular-14';
 import LocalTime from '@/components/LocalTime';
+import ServiceSearch from '@/components/ServiceSearch';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default async function Home() {
   const { services: statuses, checkedAt } = await getAllStatusWithMeta();
@@ -55,7 +58,9 @@ export default async function Home() {
 
         {/* Header */}
         <header className="flex items-center justify-between h-16 px-[64px]">
-          <span className="text-lg font-bold text-text-primary">IsAIDown.live</span>
+          <Link href="/" className="text-lg font-bold text-text-primary flex items-center gap-2">
+            IsAIDown.live
+          </Link>
         </header>
 
         {/* Hero */}
@@ -77,6 +82,7 @@ export default async function Home() {
           <p className="text-lg text-text-secondary text-center max-w-xl">
             Real-time status for {statuses.length > 0 ? statuses.length : '13'} major AI tools. Updated every 60 seconds.
           </p>
+          <ServiceSearch services={statuses} />
           <p className="text-xs text-text-muted font-mono">
             {checkedAt
               ? <>Last checked <LocalTime iso={checkedAt} /></>

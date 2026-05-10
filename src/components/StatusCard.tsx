@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { ServiceStatus, isDown, faviconUrl, latencyColor, latencyLabel, ErrorType, HistoryEntry, getServiceDef } from '@/lib/status';
+import { ServiceStatus, isDown, faviconUrl, latencyColor, latencyLabel, ErrorType, HistoryEntry } from '@/lib/status';
 import Image from 'next/image';
-import { Wifi, WifiOff, AlertTriangle, Globe, Flag, Bell, Mail, ExternalLink } from 'lucide-react';
+import { Wifi, WifiOff, AlertTriangle, Globe, Flag, Bell, Mail } from 'lucide-react';
+import Link from 'next/link';
 
 const ERROR_LABELS: Record<ErrorType, string> = {
   ok: '',
@@ -68,21 +69,31 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
   const icon = faviconUrl(s.name);
   const lc = latencyColor(s.latency_ms);
   const ll = latencyLabel(s.latency_ms);
-  const [reportState, setReportState] = useState<'idle' | 'loading' | 'reported' | 'blocked'>('idle');
-  const [localCount, setLocalCount] = useState(s.report_count ?? 0);
-  const reportCount = s.report_count && s.report_count > localCount ? s.report_count : localCount;
-  const [isItMeState, setIsItMeState] = useState<'idle' | 'loading' | 'same' | 'different'>('idle');
+  const [reportState, setReportState] = useState<'idle' | 'selecting' | 'loading' | 'reported' | 'blocked'>('idle');
   const [emailState, setEmailState] = useState<'idle' | 'open' | 'loading' | 'done'>('idle');
   const [emailInput, setEmailInput] = useState('');
+  const reportCount = s.report_count ?? 0;
 
-  const handleReport = async () => {
-    if (reportState !== 'idle') return;
+  const PROBLEM_TYPES = [
+    { key: 'website', label: 'Website down' },
+    { key: 'login', label: 'Login issues' },
+    { key: 'api', label: 'API not working' },
+    { key: 'slow', label: 'Very slow' },
+    { key: 'other', label: 'Other' },
+  ];
+
+  const handleReport = async (type: string) => {
+    if (reportState !== 'selecting') return;
     setReportState('loading');
     try {
       const workerUrl = (window as unknown as { __WORKER_URL?: string }).__WORKER_URL
         ?? process.env.NEXT_PUBLIC_WORKER_URL;
       if (!workerUrl) return;
-      const res = await fetch(`${workerUrl}/report/${s.name}`, { method: 'POST' });
+      const res = await fetch(`${workerUrl}/report/${s.name}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
+      });
       if (res.status === 429) {
         setReportState('blocked');
         setTimeout(() => setReportState('idle'), 5000);
@@ -90,29 +101,11 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
       }
       if (res.ok) {
         setReportState('reported');
-        setLocalCount(c => c + 1);
       } else {
         setReportState('idle');
       }
     } catch {
       setReportState('idle');
-    }
-  };
-
-  const handleIsItMe = async () => {
-    if (isItMeState !== 'idle') return;
-    setIsItMeState('loading');
-    const def = getServiceDef(s.name);
-    if (!def) { setIsItMeState('idle'); return; }
-    try {
-      const start = Date.now();
-      await fetch(def.url, { mode: 'no-cors', signal: AbortSignal.timeout(5000) });
-      const clientMs = Date.now() - start;
-      const serverSlow = s.latency_ms > 3000;
-      const clientSlow = clientMs > 3000;
-      setIsItMeState(serverSlow !== clientSlow ? 'different' : 'same');
-    } catch {
-      setIsItMeState('different');
     }
   };
 
@@ -149,6 +142,15 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
     : [];
   const hasHistory = s.history && s.history.length > 0;
 
+  const confPct = s.confidence ? Math.round(s.confidence * 100) : null;
+  const confLabel = confPct ? (confPct >= 95 ? 'High' : confPct >= 85 ? 'Good' : confPct >= 70 ? 'Moderate' : 'Low') : null;
+  const confColor = confPct ? (confPct >= 85 ? 'text-success' : confPct >= 70 ? 'text-yellow-400' : 'text-error') : 'text-text-muted';
+
+  const reportTypes = s.report_types;
+  const typeEntries = reportTypes
+    ? Object.entries(reportTypes).sort(([, a], [, b]) => b - a).slice(0, 3)
+    : [];
+
   return (
     <div className={`flex flex-col p-5 border
       ${down ? 'bg-error-bg border-error-border' : 'bg-surface border-border'}`}>
@@ -178,6 +180,9 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
           ) : (
             <>
               <span className={`text-xs font-mono ${lc}`}>{s.latency_ms}ms</span>
+              {confPct && (
+                <span className={`text-[10px] font-mono ${confColor}`}>{confLabel} confidence</span>
+              )}
               {ll && <span className="text-xs font-mono text-text-muted">{ll}</span>}
               {errorLabel && (
                 <span className="text-[10px] font-mono text-error bg-error-bg px-1.5 py-0.5 border border-error-border">
@@ -190,12 +195,12 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
             </>
           )}
         </div>
-        <a
-          href={`${process.env.NEXT_PUBLIC_SITE_URL}/${s.name}`}
+        <Link
+          href={`/${s.name}`}
           className="text-xs text-text-muted font-mono underline underline-offset-2 hover:text-text-secondary transition-colors"
         >
           Details →
-        </a>
+        </Link>
       </div>
 
       {/* Warnings & diagnostics */}
@@ -229,49 +234,65 @@ export default function StatusCard({ s }: { s: ServiceStatus }) {
           </p>
         )}
 
-        {isItMeState !== 'idle' && (
-          <p className={`text-[10px] font-mono ${isItMeState === 'different' ? 'text-yellow-400' : 'text-text-muted'}`}>
-            {isItMeState === 'loading' ? 'Testing from your browser...' :
-             isItMeState === 'same' ? '✓ Same result from your browser' :
-             '⚠ Different from your browser — may be your network'}
-          </p>
-        )}
       </div>
 
       {/* Action buttons */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border gap-2">
-        <div className="flex items-center gap-1.5">
+        {reportState === 'idle' && (
           <button
-            onClick={handleReport}
-            disabled={reportState === 'loading'}
-            className={`text-[10px] font-mono px-2 py-1 border transition-colors flex items-center gap-1
-              ${reportState === 'reported' ? 'border-success/40 text-success cursor-default' :
-              reportState === 'blocked' ? 'border-text-muted/30 text-text-muted cursor-default' :
-              'border-border text-text-muted hover:border-error/40 hover:text-error cursor-pointer'}`}
+            onClick={() => setReportState('selecting')}
+            className="text-[10px] font-mono px-2 py-1 border border-border text-text-muted hover:border-error/40 hover:text-error transition-colors cursor-pointer flex items-center gap-1"
           >
             <Flag className="w-3 h-3" />
-            {reportState === 'reported' ? 'Reported' :
-             reportState === 'blocked' ? 'Wait' :
-             reportState === 'loading' ? '...' :
-             'Report'}
+            Report Issue
           </button>
-          <button
-            onClick={handleIsItMe}
-            disabled={isItMeState === 'loading'}
-            className="text-[10px] font-mono px-2 py-1 border border-border text-text-muted hover:border-text-muted/40 hover:text-text-secondary transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <Globe className="w-3 h-3" />
-            {isItMeState === 'loading' ? 'Checking...' : 'Is it just me?'}
-          </button>
-        </div>
+        )}
+        {reportState === 'selecting' && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {PROBLEM_TYPES.map(pt => (
+              <button
+                key={pt.key}
+                onClick={() => handleReport(pt.key)}
+                className="text-[10px] font-mono px-2 py-1 border border-border text-text-muted hover:border-error/40 hover:text-error transition-colors cursor-pointer"
+              >
+                {pt.label}
+              </button>
+            ))}
+            <button
+              onClick={() => setReportState('idle')}
+              className="text-[10px] font-mono px-2 py-1 text-text-muted hover:text-text-secondary cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        {reportState === 'loading' && (
+          <span className="text-[10px] font-mono text-text-muted">Reporting...</span>
+        )}
+        {reportState === 'reported' && (
+          <span className="text-[10px] font-mono text-success flex items-center gap-1">
+            <Flag className="w-3 h-3" /> Reported
+          </span>
+        )}
+        {reportState === 'blocked' && (
+          <span className="text-[10px] font-mono text-text-muted">Wait before reporting again</span>
+        )}
         <div className="flex items-center gap-1.5">
           {reportCount > 0 && (
-            <span className="text-[10px] text-text-muted font-mono">
-              {reportCount}
-            </span>
+            <span className="text-[10px] text-text-muted font-mono">{reportCount}</span>
           )}
         </div>
       </div>
+
+      {typeEntries.length > 0 && (
+        <div className="flex items-center gap-1.5 mt-1.5">
+          {typeEntries.map(([key, count]) => (
+            <span key={key} className="text-[9px] font-mono text-text-muted bg-surface px-1.5 py-0.5 border border-border">
+              {PROBLEM_TYPES.find(t => t.key === key)?.label ?? key} ({count})
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Email subscribe */}
       {emailState === 'idle' ? (
