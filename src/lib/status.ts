@@ -151,3 +151,8 @@ export function latencyLabel(ms: number): string {
   if (ms < 800) return ' (Slow)';
   return ' (Very Slow)';
 }
+
+export function getSiteUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app';
+  return raw.startsWith('http') ? raw : `https://${raw}`;
+}

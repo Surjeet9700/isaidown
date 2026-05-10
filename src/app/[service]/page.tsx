@@ -1,6 +1,6 @@
 export const revalidate = 60;
 
-import { SERVICE_DEFINITIONS, getServiceDef, isDown, getAllStatusWithMeta, ErrorType, HistoryEntry } from '@/lib/status';
+import { SERVICE_DEFINITIONS, getServiceDef, isDown, getAllStatusWithMeta, ErrorType, HistoryEntry, getSiteUrl } from '@/lib/status';
 import StatusGrid from '@/components/StatusGrid';
 import { DotmCircular14 } from '@/components/ui/dotm-circular-14';
 import LocalTime from '@/components/LocalTime';
@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ service: 
 
   const { services } = await getAllStatusWithMeta();
   const status = services.find(s => s.name === service) ?? null;
+  const siteUrl = getSiteUrl();
 
   const title = status?.status === 'down'
     ? `🔴 ${def.label} DOWN — Is ${def.label} Down Right Now?`
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: { params: Promise<{ service: 
         },
       ],
     },
-    alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app'}/${service}` },
+    alternates: { canonical: `${siteUrl}/${service}` },
     robots: { index: true, follow: true },
   };
 }
@@ -119,6 +120,7 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
   const def = getServiceDef(service);
   if (!def) notFound();
 
+  const siteUrl = getSiteUrl();
   const { services: allStatuses } = await getAllStatusWithMeta();
   const status = allStatuses.find(s => s.name === service) ?? null;
   const down = status ? isDown(status) : false;
@@ -159,7 +161,7 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
         "name": `What to do if ${def.label} is down?`,
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": `If ${def.label} is down, try refreshing, clearing your cache, or using an alternative. Check ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app'} for working alternatives.`
+          "text": `If ${def.label} is down, try refreshing, clearing your cache, or using an alternative. Check ${siteUrl} for working alternatives.`
         }
       }
     ]
@@ -169,8 +171,8 @@ export default async function ServicePage({ params }: { params: Promise<{ servic
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app' },
-      { "@type": "ListItem", "position": 2, "name": `Is ${def.label} Down?`, "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://isaidown-live.vercel.app'}/${service}` },
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": siteUrl },
+      { "@type": "ListItem", "position": 2, "name": `Is ${def.label} Down?`, "item": `${siteUrl}/${service}` },
     ],
   };
 
